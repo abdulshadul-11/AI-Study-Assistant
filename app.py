@@ -2,7 +2,11 @@ import io
 import re
 import hashlib
 import streamlit as st
-import ollama
+import os
+from dotenv import load_dotenv
+from groq import Groq
+
+load_dotenv()
 
 from pypdf import PdfReader
 from pptx import Presentation
@@ -13,7 +17,7 @@ from docx import Document
 # CONFIG
 # =========================================================
 
-MODEL = "llama3.2"
+MODEL = "openai/gpt-oss-120b"
 
 st.set_page_config(
     page_title="AI Study Assistant",
@@ -23,12 +27,20 @@ st.set_page_config(
 
 
 # =========================================================
-# OLLAMA
+# GROQ
 # =========================================================
 
 @st.cache_resource
 def get_client():
-    return ollama.Client()
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        try:
+            api_key = st.secrets["GROQ_API_KEY"]
+        except Exception:
+            pass
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY missing. Configure .env locally or Streamlit Cloud Secrets.")
+    return Groq(api_key=api_key)
 
 
 client = get_client()
@@ -223,76 +235,32 @@ def retrieve_chunks(chunks, query, max_chunks=4):
 # =========================================================
 
 def stream_ai(prompt, max_tokens=280):
-
-    stream = client.chat(
-
+    stream = client.chat.completions.create(
         model=MODEL,
-
         messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a fast AI Study Assistant. "
-                    "Answer clearly and directly. "
-                    "Use simple B.Tech student-friendly "
-                    "language. "
-                    "Avoid unnecessary introductions."
-                )
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
+            {"role": "system", "content": "You are a helpful AI Study Assistant. Follow the requested format exactly. Never output HTML."},
+            {"role": "user", "content": prompt}
         ],
-
-        stream=True,
-
-        options={
-            "temperature": 0.2,
-            "num_predict": max_tokens
-        },
-
-        keep_alive="15m"
+        temperature=0.2,
+        max_tokens=max_tokens,
+        stream=True
     )
-
     for chunk in stream:
-
-        content = chunk["message"]["content"]
-
-        if content:
-            yield content
+        if chunk.choices and chunk.choices[0].delta.content:
+            yield chunk.choices[0].delta.content
 
 
 def ai_text(prompt, max_tokens=300):
-
-    response = client.chat(
-
+    response = client.chat.completions.create(
         model=MODEL,
-
         messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a concise AI Study Assistant. "
-                    "Follow the requested format exactly. "
-                    "Never output HTML."
-                )
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
+            {"role": "system", "content": "You are a concise AI Study Assistant. Follow the requested format exactly. Never output HTML."},
+            {"role": "user", "content": prompt}
         ],
-
-        options={
-            "temperature": 0.2,
-            "num_predict": max_tokens
-        },
-
-        keep_alive="15m"
+        temperature=0.2,
+        max_tokens=max_tokens
     )
-
-    return response["message"]["content"]
+    return response.choices[0].message.content or ""
 
 
 # =========================================================
@@ -1500,6 +1468,6 @@ Do NOT output HTML.
 st.divider()
 
 st.caption(
-    "⚡ Powered by Ollama + Llama 3.2 | "
+    "⚡ Powered by Groq AI | "
     "Local AI Study Assistant"
 )

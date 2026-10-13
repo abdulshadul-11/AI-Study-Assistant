@@ -1,6 +1,8 @@
 streamlit
-ollama
 pypdf
 python-pptx
 python-docx
 
+
+groq
+python-dotenv
