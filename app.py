@@ -17,7 +17,7 @@ from docx import Document
 # CONFIG
 # =========================================================
 
-MODEL = "openai/gpt-oss-120b"
+MODEL = "openai/gpt-oss-20b"
 
 st.set_page_config(
     page_title="AI Study Assistant",
