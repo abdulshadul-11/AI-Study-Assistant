@@ -1,8 +1,9 @@
+
 streamlit
 pypdf
 python-pptx
 python-docx
-
-
 groq
 python-dotenv
+fastapi
+uvicorn[standard]
